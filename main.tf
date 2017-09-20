@@ -124,6 +124,11 @@ resource "aws_security_group" "firewall" {
   }
 }
 
+resource "aws_key_pair" "ss" {
+    key_name = "ss"
+    public_key = "${var.instance_key}"
+}
+
 resource "aws_instance" "ss" {
         ami = "${var.ami}"
         instance_type = "${var.instance_type}"
