@@ -67,9 +67,9 @@ variable "port" {
 }
 
 provider "aws" {
-  access_key = "${var.aws_access_key}"
-  secret_key = "${var.aws_secret_key}"
-  region     = "${var.region}"
+  access_key = var.aws_access_key
+  secret_key = var.aws_secret_key
+  region     = var.region
 }
 
 resource "aws_vpc" "main" {
@@ -77,43 +77,43 @@ resource "aws_vpc" "main" {
 }
 
 resource "aws_internet_gateway" "gw" {
-    vpc_id = "${aws_vpc.main.id}"
+    vpc_id = aws_vpc.main.id
 }
 
 resource "aws_route_table" "default" {
-    vpc_id = "${aws_vpc.main.id}"
+    vpc_id = aws_vpc.main.id
 
     route {
         cidr_block = "0.0.0.0/0"
-        gateway_id = "${aws_internet_gateway.gw.id}"
+        gateway_id = aws_internet_gateway.gw.id
     }
 }
 
 resource "aws_main_route_table_association" "a" {
-  vpc_id         = "${aws_vpc.main.id}"
-  route_table_id = "${aws_route_table.default.id}"
+  vpc_id         = aws_vpc.main.id
+  route_table_id = aws_route_table.default.id
 }
 
 resource "aws_subnet" "main" {
-    vpc_id = "${aws_vpc.main.id}"
+    vpc_id = aws_vpc.main.id
     cidr_block = "10.0.0.0/24"
 }
 
 resource "aws_security_group" "firewall" {
     name = "firewall"
-    vpc_id = "${aws_vpc.main.id}"
+    vpc_id = aws_vpc.main.id
     ingress {
         from_port = 22
         to_port = 22
         protocol = "tcp"
-        cidr_blocks = ["${var.myip}"]
+        cidr_blocks = [var.myip]
     }
 
     ingress {
-        from_port = "${var.port}"
-        to_port = "${var.port}"
+        from_port = var.port
+        to_port = var.port
         protocol = "tcp"
-        cidr_blocks = ["${var.myip}"]
+        cidr_blocks = [var.myip]
     }    
 
     egress {
@@ -126,30 +126,28 @@ resource "aws_security_group" "firewall" {
 
 resource "aws_key_pair" "ss" {
     key_name = "ss"
-    public_key = "${var.instance_key}"
+    public_key = var.instance_key
 }
 
 resource "aws_instance" "ss" {
-        ami = "${var.ami}"
-        instance_type = "${var.instance_type}"
-        subnet_id = "${aws_subnet.main.id}"
-        vpc_security_group_ids = ["${aws_security_group.firewall.id}"]
+        ami = var.ami
+        instance_type = var.instance_type
+        subnet_id = aws_subnet.main.id
+        vpc_security_group_ids = [aws_security_group.firewall.id]
         key_name = "ss"        
 }
 
 resource "aws_eip" ssip {
-    instance = "${aws_instance.ss.id}"
+    instance = aws_instance.ss.id
     vpc = true
 }
 
 resource "null_resource" "init_ec2" {
-    triggers {
-        instance = "${aws_instance.ss.id}"
-    }
+    depends_on = [aws_instance.ss.id]
     connection {
                 user = "ec2-user"
-                private_key = "${file("${var.private_key_file_path}")}"
-                host = "${aws_eip.ssip.public_ip}"
+                private_key = file(var.private_key_file_path)
+                host = aws_eip.ssip.public_ip
                 type = "ssh"
             }
     provisioner "remote-exec" {
@@ -166,5 +164,5 @@ resource "null_resource" "init_ec2" {
 }
 
 output "address" {
-    value = "${aws_eip.ssip.public_ip}"
+    value = aws_eip.ssip.public_ip
 }
